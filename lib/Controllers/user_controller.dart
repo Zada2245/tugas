@@ -1,51 +1,72 @@
+import 'dart:convert';
+import 'package:crypto/crypto.dart';
 import 'package:tugas/data/supabase_credentials.dart';
-import 'package:tugas/model/user_model.dart';
+import 'package:tugas/model/user_model.dart'; // Pastikan path ke model benar
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class UserController {
-  // Ambil client dari file credentials Anda
   final SupabaseClient _client = SupabaseCredentials.client;
 
-  /// Login: Menggunakan Supabase Auth (Aman)
-  /// Mengembalikan UserModel jika sukses, null jika gagal.
+  String _hashPassword(String password) {
+    var bytes = utf8.encode(password);
+    var digest = sha256.convert(bytes);
+    return digest.toString();
+  }
+
   Future<UserModel?> loginUser(String email, String password) async {
+    print('Attempting login for email: $email');
     try {
-      // 1. Panggil Supabase Auth untuk login (Aman)
-      // Ini akan mengecek ke "brankas" auth.users
-      final authResponse = await _client.auth.signInWithPassword(
-        email: email,
-        password: password,
-      );
-
-      final user = authResponse.user;
-      if (user == null) return null; // Gagal login
-
-      // 2. Ambil data profil dari tabel 'profile' kita
+      print('Calling Supabase signInWithPassword...');
+      // NOTE: signInWithPassword di controller manual ini hanya untuk contoh,
+      // Seharusnya kita cek hash manual. Tapi kita ikuti dulu alur sebelumnya.
+      // Jika ingin cek manual:
       final profileRes = await _client
-          .from('profile') // Nama tabel 'profile' Anda
+          .from('profile')
           .select()
-          .eq('id', user.id)
-          .single(); // Ambil satu baris
+          .eq('email', email)
+          .maybeSingle();
 
-      // 3. Kembalikan data sebagai UserModel
-      return UserModel.fromJson(profileRes);
+      if (profileRes == null) {
+        print('Login error: Email tidak ditemukan');
+        return null;
+      }
+      print('Profile fetched for login: $profileRes');
+
+      final storedUser = UserModel.fromJson(profileRes);
+      final inputPasswordHash = _hashPassword(password);
+
+      print(
+        'Comparing input hash: $inputPasswordHash with stored hash: ${storedUser.passwordHash}',
+      );
+      if (inputPasswordHash == storedUser.passwordHash) {
+        print(
+          'Login successful, returning UserModel for: ${storedUser.username}',
+        );
+        return storedUser;
+      } else {
+        print('Login error: Password salah');
+        return null;
+      }
+    } on AuthException catch (authErr) {
+      // Ini seharusnya tidak terpanggil jika kita cek hash manual
+      print(
+        'Login Auth error caught (unexpected in manual mode): ${authErr.message}',
+      );
+      return null;
     } catch (e) {
-      print('Login error: $e');
+      print('Login general error caught: $e');
       return null;
     }
   }
 
-  /// Register: Menggunakan Supabase Auth (Aman)
-  /// Mengembalikan Map { success: bool, message: String }
   Future<Map<String, dynamic>> registerUser({
-    required String username, // Sesuai tabel 'profile' kita
+    required String username,
     required String email,
     required String password,
-    String? fullName, // Opsional
-    String? phoneNumber, // Opsional
+    String? fullName,
+    String? phoneNumber,
   }) async {
     try {
-      // validasi minimal
       if (username.trim().isEmpty ||
           email.trim().isEmpty ||
           password.trim().isEmpty) {
@@ -58,35 +79,38 @@ class UserController {
         return {'success': false, 'message': 'Password minimal 6 karakter'};
       }
 
-      // 1. Panggil Supabase Auth untuk daftar (Aman)
-      // Password akan di-enkripsi otomatis oleh Supabase
-      final authResponse = await _client.auth.signUp(
-        email: email,
-        password: password,
-        data: {
-          // Kirim data ini ke Trigger SQL kita
-          'username': username,
-          'full_name': fullName,
-          'phone_numb': phoneNumber, // Sesuaikan dengan nama kolom Anda
-        },
-      );
+      final existing = await _client
+          .from('profile')
+          .select('id')
+          .eq('email', email)
+          .maybeSingle();
 
-      if (authResponse.user == null) {
-        return {
-          'success': false,
-          'message': 'Gagal mendaftar di Supabase Auth',
-        };
+      if (existing != null) {
+        return {'success': false, 'message': 'Email sudah terdaftar'};
       }
 
-      // 2. Trigger SQL akan otomatis menangani pembuatan baris di tabel 'profile'.
-      // (Kita perlu perbarui Trigger-nya agar bisa menyimpan data tambahan ini)
+      final passwordHash = _hashPassword(password);
+
+      // PASTIKAN NAMA KOLOM DI SINI SESUAI DATABASE ANDA
+      await _client.from('profile').insert({
+        'username': username,
+        'email': email,
+        'full_name': fullName,
+        // PERBAIKAN DI SINI:
+        'phone_number': phoneNumber, // <-- Gunakan phone_number
+        'password_hash': passwordHash, // <-- Gunakan password_hash
+      });
 
       return {'success': true, 'message': 'Registrasi berhasil'};
-    } on AuthException catch (authErr) {
-      print('Register Auth error: ${authErr.message}');
-      return {'success': false, 'message': 'Auth error: ${authErr.message}'};
+    } on PostgrestException catch (pgErr) {
+      print('Register PG error: ${pgErr.message}');
+      String detail = pgErr.details?.toString() ?? '';
+      return {
+        'success': false,
+        'message': 'Database error: ${pgErr.message} $detail',
+      };
     } catch (e) {
-      print('Register error: $e');
+      print('Register general error: $e');
       return {'success': false, 'message': 'Terjadi kesalahan: $e'};
     }
   }

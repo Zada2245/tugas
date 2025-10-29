@@ -1,27 +1,25 @@
 import 'package:flutter/material.dart';
-import 'package:tugas/login/login.dart'; // Pastikan path ini benar
+import 'package:tugas/login/login.dart'; // Halaman login Anda
 import 'package:supabase_flutter/supabase_flutter.dart';
-
-// --- BAGIAN KONEKSI PENTING ---
-// URL dan Key ini HARUS BENAR.
-// Saya sudah mengisinya dengan key Anda dari riwayat chat kita.
-const String supabaseUrl = 'https://ekysmgpqoluxhoeungre.supabase.co';
-const String supabaseAnonKey =
-    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVreXNtZ3Bxb2x1eGhvZXVuZ3JlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjExMDg1NTMsImV4cCI6MjA3NjY4NDU1M30.xv8RjcD8oUg5Odx8Dpgsn6ilh0s4edBBqqo_NKaIv2M';
-
-// ---------------------------------
+import 'package:tugas/data/supabase_credentials.dart'; // Import credentials
 
 Future<void> main() async {
-  // 1. Pastikan Flutter siap
+  // Pastikan Flutter siap
   WidgetsFlutterBinding.ensureInitialized();
 
-  // 2. Inisialisasi Supabase
-  // Error 'Anonymous sign-in' terjadi jika 'anonKey' ini salah atau kosong.
-  await Supabase.initialize(url: supabaseUrl, anonKey: supabaseAnonKey);
+  // ---- INISIALISASI SUPABASE ----
+  // Ambil URL dan Key dari file credentials
+  await Supabase.initialize(
+    url: SupabaseCredentials.supabaseUrl,
+    anonKey: SupabaseCredentials.supabaseAnonKey,
+  );
+  // -----------------------------
 
-  // 3. Jalankan Aplikasi
   runApp(const MyApp());
 }
+
+// Ambil instance client setelah inisialisasi (bisa juga diakses via SupabaseCredentials.client)
+final supabase = Supabase.instance.client;
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -32,7 +30,7 @@ class MyApp extends StatelessWidget {
       title: 'Kamera Rental',
       debugShowCheckedModeBanner: false,
       theme: ThemeData.dark().copyWith(
-        // Tema Anda sudah diatur dengan baik di sini
+        // ... (Tema Anda sudah benar) ...
         colorScheme: ColorScheme.fromSeed(
           seedColor: Colors.teal,
           brightness: Brightness.dark,
@@ -54,7 +52,7 @@ class MyApp extends StatelessWidget {
           fillColor: Colors.black.withOpacity(0.2),
         ),
       ),
-      // Aplikasi dimulai di LoginPage
+      // Kita mulai dari LoginPage, logika cek login ada di controller/view
       home: const LoginPage(),
     );
   }
