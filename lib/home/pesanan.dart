@@ -73,6 +73,31 @@ class _OrderPageState extends State<OrderPage> {
     });
   }
 
+  /// ✅ NEW: Mendapatkan nama alamat dari koordinat (reverse geocoding)
+  Future<void> _getAddressFromLatLng(double lat, double lon) async {
+    final url =
+        'https://nominatim.openstreetmap.org/reverse?lat=$lat&lon=$lon&format=json';
+    try {
+      final response = await http.get(
+        Uri.parse(url),
+        headers: {'User-Agent': 'FlutterMapApp/1.0'},
+      );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['display_name'] != null) {
+          setState(() {
+            _currentLocationText = data['display_name'];
+            _locationStatus = "Alamat ditemukan!";
+          });
+        } else {
+          setState(() => _locationStatus = "Alamat tidak ditemukan.");
+        }
+      }
+    } catch (e) {
+      setState(() => _locationStatus = "Gagal memuat alamat: $e");
+    }
+  }
+
   Future<void> _getCurrentLocation() async {
     setState(() => _locationStatus = "Mengambil lokasi...");
 
@@ -95,11 +120,12 @@ class _OrderPageState extends State<OrderPage> {
 
     setState(() {
       _currentLatLng = LatLng(position.latitude, position.longitude);
-      _currentLocationText =
-          "Lat: ${position.latitude}, Lon: ${position.longitude} (Lokasi Saya)";
       _mapController.move(_currentLatLng, 15.0);
       _locationStatus = "Lokasi ditemukan!";
     });
+
+    // 🔹 Ambil nama alamat otomatis
+    await _getAddressFromLatLng(position.latitude, position.longitude);
   }
 
   Future<void> _searchAddress(String address) async {
@@ -119,7 +145,7 @@ class _OrderPageState extends State<OrderPage> {
           final lon = double.parse(data[0]['lon']);
           setState(() {
             _currentLatLng = LatLng(lat, lon);
-            _currentLocationText = "${data[0]['display_name']} (Dari Alamat)";
+            _currentLocationText = data[0]['display_name'];
             _mapController.move(_currentLatLng, 15.0);
             _locationStatus = "Alamat ditemukan!";
           });
@@ -259,7 +285,7 @@ class _OrderPageState extends State<OrderPage> {
 
             // Lokasi Pengambilan
             const Text(
-              'Lokasi Pengambilan',
+              'Lokasi Pengambilan (LBS)',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 10),
@@ -285,9 +311,11 @@ class _OrderPageState extends State<OrderPage> {
                   label: const Text("Gunakan Lokasi Saya"),
                 ),
                 const SizedBox(width: 10),
-                Text(
-                  _locationStatus,
-                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                Expanded(
+                  child: Text(
+                    _locationStatus,
+                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
                 ),
               ],
             ),
@@ -300,12 +328,15 @@ class _OrderPageState extends State<OrderPage> {
                 options: MapOptions(
                   initialCenter: _currentLatLng,
                   initialZoom: 15,
-                  onTap: (tapPosition, latLng) {
+                  onTap: (tapPosition, latLng) async {
                     setState(() {
                       _currentLatLng = latLng;
-                      _currentLocationText =
-                          "Lat: ${latLng.latitude}, Lon: ${latLng.longitude} (Dipilih di Peta)";
+                      _locationStatus = "Memuat alamat...";
                     });
+                    await _getAddressFromLatLng(
+                      latLng.latitude,
+                      latLng.longitude,
+                    );
                   },
                 ),
                 children: [
@@ -332,9 +363,22 @@ class _OrderPageState extends State<OrderPage> {
               ),
             ),
 
+            const SizedBox(height: 8),
+            Text(
+              'Alamat saat ini:',
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+            ),
+            Text(
+              _currentLocationText,
+              style: const TextStyle(
+                fontSize: 13,
+                color: Color.fromARGB(221, 255, 255, 255),
+              ),
+            ),
+
             const Divider(height: 30),
 
-            // 🔹 Konversi Waktu Dunia (Tampilan Saja)
+            // Konversi Waktu Dunia
             const Text(
               'Konversi Waktu Dunia (Tampilan Saja)',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
