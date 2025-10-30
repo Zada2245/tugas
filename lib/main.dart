@@ -1,25 +1,48 @@
 import 'package:flutter/material.dart';
-import 'package:tugas/login/login.dart'; // Halaman login Anda
+import 'package:tugas/login/login.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:tugas/data/supabase_credentials.dart'; // Import credentials
+import 'package:tugas/data/supabase_credentials.dart';
+import 'package:intl/date_symbol_data_local.dart';
+
+// 1. IMPORT TIMEZONE
+import 'package:timezone/data/latest.dart' as tz;
+import 'package:timezone/timezone.dart' as tz;
+import 'package:flutter_timezone/flutter_timezone.dart'; // Package yang baru
 
 Future<void> main() async {
-  // Pastikan Flutter siap
   WidgetsFlutterBinding.ensureInitialized();
 
-  // ---- INISIALISASI SUPABASE ----
-  // Ambil URL dan Key dari file credentials
+  // Inisialisasi format intl
+  await initializeDateFormatting('id_ID', null);
+
+  // 2. INISIALISASI DATABASE ZONA WAKTU
+  tz.initializeTimeZones();
+  try {
+    // --- PERBAIKAN DI SINI ---
+    // Ambil objek, lalu panggil .toString() untuk memaksa jadi String
+    // Ini akan menangani TimezoneInfo atau String
+    final String localTimeZone = (await FlutterTimezone.getLocalTimezone())
+        .toString();
+    // --------------------------
+
+    print('Timezone Dideteksi: $localTimeZone'); // Log untuk debugging
+
+    tz.setLocalLocation(tz.getLocation(localTimeZone));
+  } catch (e) {
+    print('Failed to get local timezone: $e');
+    // Fallback ke zona waktu default (misal: Jakarta)
+    tz.setLocalLocation(tz.getLocation('Asia/Jakarta'));
+  }
+  // ------------------------------------
+
+  // Inisialisasi Supabase
   await Supabase.initialize(
     url: SupabaseCredentials.supabaseUrl,
     anonKey: SupabaseCredentials.supabaseAnonKey,
   );
-  // -----------------------------
 
   runApp(const MyApp());
 }
-
-// Ambil instance client setelah inisialisasi (bisa juga diakses via SupabaseCredentials.client)
-final supabase = Supabase.instance.client;
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -30,7 +53,6 @@ class MyApp extends StatelessWidget {
       title: 'Kamera Rental',
       debugShowCheckedModeBanner: false,
       theme: ThemeData.dark().copyWith(
-        // ... (Tema Anda sudah benar) ...
         colorScheme: ColorScheme.fromSeed(
           seedColor: Colors.teal,
           brightness: Brightness.dark,
@@ -52,7 +74,6 @@ class MyApp extends StatelessWidget {
           fillColor: Colors.black.withOpacity(0.2),
         ),
       ),
-      // Kita mulai dari LoginPage, logika cek login ada di controller/view
       home: const LoginPage(),
     );
   }

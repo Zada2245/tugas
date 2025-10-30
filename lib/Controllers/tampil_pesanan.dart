@@ -1,6 +1,5 @@
 import 'package:tugas/data/supabase_credentials.dart';
 import 'package:tugas/model/pesanan_model.dart'; // Import model pesanan
-// Import model produk mungkin diperlukan jika ingin update stok
 import 'package:tugas/model/produk_model.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -13,15 +12,18 @@ class PesananController {
     required int produkId, // ID produk dari tabel produk (int8)
     required double totalHarga,
     required String lokasiSewa,
-    int? produkStokSaatIni, // Tambahkan stok saat ini jika ingin update
+    int? produkStokSaatIni,
   }) async {
     print(
-      'PesananController: Creating order for user $userId, produk $produkId, price $totalHarga, location $lokasiSewa',
+      // <-- LOG 1: Memulai fungsi
+      'PesananController: Attempting createOrder for user $userId, produk $produkId, price $totalHarga, location $lokasiSewa',
     );
     try {
       // Validasi Stok (jika ada)
       if (produkStokSaatIni != null && produkStokSaatIni <= 0) {
-        print('PesananController: Stok habis validation failed.');
+        print(
+          'PesananController: Stok habis validation failed.',
+        ); // <-- LOG 2: Stok habis
         return {'success': false, 'message': 'Stok produk habis!'};
       }
 
@@ -33,16 +35,24 @@ class PesananController {
         'lokasi_sewa': lokasiSewa,
         'status': 'disewa', // Pastikan nama kolom dan nilai sesuai
       };
-      print('PesananController: Data to insert: $orderData');
+      print(
+        'PesananController: Data to insert: $orderData',
+      ); // <-- LOG 3: Data siap
 
       // 1. Masukkan data ke tabel 'pesanan'
-      print('PesananController: Executing insert into pesanan...');
+      print(
+        'PesananController: Executing insert into pesanan...',
+      ); // <-- LOG 4: Sebelum insert
       await _client.from('pesanan').insert(orderData);
-      print('PesananController: Insert into pesanan successful.');
+      print(
+        'PesananController: Insert into pesanan successful.',
+      ); // <-- LOG 5: Setelah insert
 
       // 2. Update stok (jika ada)
       if (produkStokSaatIni != null) {
-        print('PesananController: Updating stock for produk $produkId...');
+        print(
+          'PesananController: Updating stock for produk $produkId...',
+        ); // <-- LOG 6: Sebelum update stok
         final newStock = produkStokSaatIni - 1;
         final updateResponse = await _client
             .from('produk')
@@ -53,12 +63,16 @@ class PesananController {
         if (updateResponse.isEmpty) {
           print(
             'PesananController: Warning - Failed to update stock after order.',
-          );
+          ); // <-- LOG 7: Gagal update stok
         } else {
-          print('PesananController: Stock updated successfully to $newStock.');
+          print(
+            'PesananController: Stock updated successfully to $newStock.',
+          ); // <-- LOG 8: Sukses update stok
         }
       } else {
-        print('PesananController: Stock update skipped (stokSaatIni is null).');
+        print(
+          'PesananController: Stock update skipped (stokSaatIni is null).',
+        ); // <-- LOG 9: Skip update stok
       }
 
       return {'success': true, 'message': 'Pemesanan berhasil dibuat!'};
@@ -66,7 +80,7 @@ class PesananController {
       // Tangkap error database
       print(
         'PesananController: Postgrest ERROR creating order: ${pgError.message}',
-      );
+      ); // <-- LOG 10: Error DB
       print(
         'PesananController: Code: ${pgError.code}, Details: ${pgError.details}, Hint: ${pgError.hint}',
       );
@@ -76,27 +90,26 @@ class PesananController {
       };
     } catch (e) {
       // Tangkap error lain
-      print('PesananController: General ERROR creating order: $e');
+      print(
+        'PesananController: General ERROR creating order: $e',
+      ); // <-- LOG 11: Error umum
       print('PesananController: Runtime type: ${e.runtimeType}');
       return {'success': false, 'message': 'Terjadi kesalahan: $e'};
     }
   }
 
-  // --- FUNGSI fetchUserOrders ---
-  /// Fungsi untuk mengambil riwayat pesanan user (dipanggil dari RiwayatPesananPage)
+  // --- Fungsi fetchUserOrders tetap sama ---
   Future<List<PesananModel>> fetchUserOrders(int userId) async {
     print('PesananController: Fetching orders for user ID: $userId');
     try {
-      // Query ke tabel 'pesanan', join dengan 'produk'
       final response = await _client
           .from('pesanan')
           .select('*, produk!inner(id, nama, gambar, harga, deskripsi, stok)')
-          .eq('user_id', userId) // Filter berdasarkan ID pengguna
-          .order('created_at', ascending: false); // Urutkan dari terbaru
+          .eq('user_id', userId)
+          .order('created_at', ascending: false);
 
       print('PesananController: Raw response received: $response');
 
-      // Konversi hasil (List<dynamic>) menjadi List<PesananModel>
       final List<PesananModel> orders = response.map((item) {
         try {
           return PesananModel.fromJson(item as Map<String, dynamic>);
@@ -104,7 +117,6 @@ class PesananController {
           print(
             'PesananController: Error parsing order item $item - Error: $e',
           );
-          // Melempar error agar bisa ditangkap di UI
           throw Exception('Gagal parsing data pesanan: $e');
         }
       }).toList();
@@ -116,13 +128,10 @@ class PesananController {
         'PesananController: Postgrest ERROR fetching orders: ${pgError.message}',
       );
       print('PesananController: Details: ${pgError.details}');
-      return []; // Kembalikan list kosong jika error
+      return [];
     } catch (e) {
       print('PesananController: General ERROR fetching orders: $e');
-      return []; // Kembalikan list kosong jika error
+      return [];
     }
   }
-  // -----------------------------
-
-  // Tambahkan fungsi lain jika perlu (misal: cancelOrder, updateOrderStatus)
 }

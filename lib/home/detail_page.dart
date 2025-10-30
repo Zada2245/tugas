@@ -1,60 +1,68 @@
 import 'package:flutter/material.dart';
-import 'package:tugas/model/produk_model.dart'; // Sesuaikan path jika perlu
-import 'package:tugas/data/supabase_credentials.dart'; // Untuk akses client
-import 'package:supabase_flutter/supabase_flutter.dart'; // Untuk User
-import 'package:intl/intl.dart'; // <-- 1. IMPORT intl
+// PASTIKAN PATH INI BENAR: 'models' atau 'model'
+import 'package:tugas/model/produk_model.dart';
+import 'package:tugas/data/supabase_credentials.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:intl/intl.dart';
+// PASTIKAN PATH INI BENAR:
+import 'package:tugas/home/pesanan.dart';
 
 class DetailPage extends StatefulWidget {
-  // Ubah jadi StatefulWidget
   final ProdukModel produk;
-  const DetailPage({super.key, required this.produk});
+  // 1. PASTIKAN DetailPage MENERIMA currentUserId
+  final int? currentUserId;
+
+  const DetailPage({
+    super.key,
+    required this.produk,
+    required this.currentUserId, // 2. BUAT INI REQUIRED
+  });
 
   @override
   State<DetailPage> createState() => _DetailPageState();
 }
 
 class _DetailPageState extends State<DetailPage> {
-  // Buat State
-  bool _isProcessing = false; // Status untuk proses sewa
-
-  // 2. PINDAHKAN FORMATTER KE SINI
   final formatter = NumberFormat.currency(
     locale: 'id_ID',
     symbol: 'Rp ',
     decimalDigits: 0,
   );
 
-  // Fungsi untuk menampilkan dialog konfirmasi
+  // Fungsi navigasi yang akan dipanggil
+  void _navigateToOrderPage() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => OrderPage(
+          produk: widget.produk,
+          // 3. KIRIM currentUserId KE OrderPage
+          currentUserId: widget.currentUserId,
+        ),
+      ),
+    );
+  }
+
   void _showRentalDialog(BuildContext context) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('Konfirmasi Penyewaan'),
+          title: const Text('Konfirmasi Pemesanan'),
           content: Text(
-            'Anda yakin ingin menyewa ${widget.produk.nama}?',
-          ), // Akses via widget.produk
+            'Anda akan melanjutkan ke halaman pemesanan untuk detail mata uang dan lokasi untuk ${widget.produk.nama}.',
+          ),
           actions: [
             TextButton(
               child: const Text('Batal'),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
+              onPressed: () => Navigator.of(context).pop(),
             ),
             ElevatedButton(
-              onPressed: _isProcessing
-                  ? null
-                  : _handleSewa, // Panggil _handleSewa
-              child: _isProcessing
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
-                  : const Text('Ya, Sewa Sekarang'),
+              onPressed: () {
+                Navigator.of(context).pop(); // Tutup dialog konfirmasi
+                _navigateToOrderPage(); // Panggil fungsi navigasi
+              },
+              child: const Text('Lanjut Pemesanan'),
             ),
           ],
         );
@@ -62,76 +70,10 @@ class _DetailPageState extends State<DetailPage> {
     );
   }
 
-  // Pisahkan logika sewa ke fungsi async
-  Future<void> _handleSewa() async {
-    setState(() {
-      _isProcessing = true; // Mulai proses
-    });
-    Navigator.of(context).pop(); // Tutup dialog dulu
-
-    try {
-      // Dapatkan User ID (pastikan user sudah login)
-      final User? user = SupabaseCredentials.client.auth.currentUser;
-      if (user == null) {
-        // Jika menggunakan sistem manual, user mungkin null, tangani di sini
-        // Coba ambil ID dari UserModel jika ada, atau tampilkan error
-        // Ini contoh jika Anda punya cara mengambil UserModel saat ini
-        // final UserModel? currentUser = await getCurrentUserModel(); // Ganti dengan logika Anda
-        // if (currentUser == null || currentUser.id == null) {
-        throw Exception('User belum login atau ID tidak ditemukan!');
-        // }
-        // final userId = currentUser.id;
-
-        // --- HAPUS BAGIAN INI JIKA SUDAH KEMBALI KE SUPABASE AUTH ---
-        // Jika masih pakai Supabase Auth, baris di atas sudah cukup:
-        // throw Exception('User belum login!');
-      }
-
-      // Masukkan data ke tabel 'pesanan'
-      await SupabaseCredentials.client.from('pesanan').insert({
-        'produk_id': widget.produk.id, // Akses via widget.produk
-        // Pastikan Anda mendapatkan user ID yang benar
-        'user_id': user?.id, // Gunakan user?.id jika user bisa null
-        'status': 'disewa',
-      });
-
-      // Tampilkan notifikasi sukses
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Berhasil menyewa ${widget.produk.nama}!',
-            ), // Akses via widget.produk
-            backgroundColor: Colors.green,
-          ),
-        );
-      }
-    } catch (error) {
-      // Tampilkan notifikasi error
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Gagal menyewa: ${error.toString()}'),
-            backgroundColor: Theme.of(context).colorScheme.error,
-          ),
-        );
-      }
-    } finally {
-      // Pastikan loading berhenti
-      if (mounted) {
-        setState(() {
-          _isProcessing = false; // Selesai proses
-        });
-      }
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.produk.nama), // Akses via widget.produk
-      ),
+      appBar: AppBar(title: Text(widget.produk.nama)),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -140,19 +82,19 @@ class _DetailPageState extends State<DetailPage> {
             ClipRRect(
               borderRadius: BorderRadius.circular(12.0),
               child: Image.network(
-                widget.produk.gambar, // Akses via widget.produk
+                widget.produk.gambar,
                 width: double.infinity,
                 height: 250,
                 fit: BoxFit.cover,
                 errorBuilder: (context, error, stackTrace) {
                   return Container(
                     height: 250,
-                    color: Colors.grey[800], // Warna background gelap
+                    color: Colors.grey[800],
                     child: const Center(
                       child: Icon(
                         Icons.broken_image,
                         size: 100,
-                        color: Colors.grey, // Warna ikon
+                        color: Colors.grey,
                       ),
                     ),
                   );
@@ -161,17 +103,16 @@ class _DetailPageState extends State<DetailPage> {
             ),
             const SizedBox(height: 24),
             Text(
-              widget.produk.nama, // Akses via widget.produk
+              widget.produk.nama,
               style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
             Text(
-              // 3. GUNAKAN FORMATTER DI SINI
-              formatter.format(widget.produk.harga), // Akses via widget.produk
+              formatter.format(widget.produk.harga),
               style: TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.w500,
-                color: Theme.of(context).colorScheme.primary, // Warna dari tema
+                color: Theme.of(context).colorScheme.primary,
               ),
             ),
             const SizedBox(height: 24),
@@ -181,29 +122,30 @@ class _DetailPageState extends State<DetailPage> {
             ),
             const SizedBox(height: 8),
             Text(
-              widget.produk.deskripsi, // Akses via widget.produk
+              widget.produk.deskripsi,
               style: const TextStyle(fontSize: 16, height: 1.5),
             ),
           ],
         ),
       ),
-      bottomNavigationBar: BottomAppBar(
+      bottomNavigationBar: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16.0),
-          child: ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              backgroundColor: Theme.of(context).colorScheme.primary,
-              // Hapus foregroundColor dari sini jika ingin coba cara TextStyle
-              // foregroundColor: Colors.white,
-            ),
-            onPressed: () => _showRentalDialog(context), // Panggil dialog
-            child: const Text(
-              'Sewa Sekarang',
-              // PERBAIKAN ALTERNATIF: Tambahkan warna di TextStyle
-              style: TextStyle(
-                fontSize: 18,
-                color: Color.fromARGB(255, 16, 16, 16),
+          child: SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                backgroundColor: Theme.of(context).colorScheme.primary,
+              ),
+              onPressed: () => _showRentalDialog(context),
+              child: const Text(
+                'Sewa Sekarang',
+                style: TextStyle(
+                  fontSize: 18,
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           ),

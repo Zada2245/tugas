@@ -48,7 +48,8 @@ class _LoginPageState extends State<LoginPage> {
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
-              builder: (context) => HomePage(username: user.username),
+              builder: (context) =>
+                  HomePage(currentUser: user), // <-- Kirim 'currentUser'
             ),
           );
         }
