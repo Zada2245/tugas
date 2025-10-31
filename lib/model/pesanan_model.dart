@@ -1,4 +1,4 @@
-import 'package:tugas/model/produk_model.dart'; // Import model produk
+import 'package:tugas/model/produk_model.dart';
 
 class PesananModel {
   final int id;
@@ -8,6 +8,7 @@ class PesananModel {
   final String status;
   final String? lokasiSewa;
   final DateTime createdAt; // Simpan sebagai DateTime
+  final DateTime? tanggalKembali; // <-- Tambahan baru
   final ProdukModel? produk;
 
   PesananModel({
@@ -18,6 +19,7 @@ class PesananModel {
     required this.status,
     this.lokasiSewa,
     required this.createdAt,
+    this.tanggalKembali, // <-- baru
     this.produk,
   });
 
@@ -43,20 +45,28 @@ class PesananModel {
       hargaParsed = double.tryParse(json['total_harga'].toString()) ?? 0.0;
     }
 
-    // --- PERBAIKAN PARSING WAKTU ---
+    // --- Parsing waktu ---
     DateTime createdAtLocal = DateTime.now(); // Default jika parsing gagal
     if (json['created_at'] != null) {
       try {
-        // 1. Parse string waktu dari Supabase (yang dalam UTC)
         DateTime createdAtUtc = DateTime.parse(json['created_at'].toString());
-        // 2. Konversi ke zona waktu lokal perangkat
         createdAtLocal = createdAtUtc.toLocal();
       } catch (e) {
         print("Error parsing created_at: $e");
-        // Biarkan menggunakan DateTime.now() sebagai fallback
       }
     }
-    // -----------------------------
+
+    DateTime? tanggalKembaliLocal;
+    if (json['tanggal_kembali'] != null) {
+      try {
+        DateTime tanggalKembaliUtc = DateTime.parse(
+          json['tanggal_kembali'].toString(),
+        );
+        tanggalKembaliLocal = tanggalKembaliUtc.toLocal();
+      } catch (e) {
+        print("Error parsing tanggal_kembali: $e");
+      }
+    }
 
     return PesananModel(
       id: json['id'] as int? ?? 0,
@@ -65,8 +75,8 @@ class PesananModel {
       totalHarga: hargaParsed,
       status: json['status'] as String? ?? 'unknown',
       lokasiSewa: json['lokasi_sewa'] as String?,
-      // Gunakan waktu yang sudah dikonversi ke lokal
       createdAt: createdAtLocal,
+      tanggalKembali: tanggalKembaliLocal, // <-- baru
       produk: parsedProduk,
     );
   }

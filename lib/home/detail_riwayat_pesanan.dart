@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:tugas/model/pesanan_model.dart'; // Sesuaikan path jika perlu
+import 'package:tugas/model/pesanan_model.dart';
 import 'package:intl/intl.dart';
-import 'package:qr_flutter/qr_flutter.dart'; // Import package QR
+import 'package:qr_flutter/qr_flutter.dart';
 
 class OrderDetailPage extends StatelessWidget {
   final PesananModel order;
@@ -10,18 +10,27 @@ class OrderDetailPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Formatter yang sama dari halaman riwayat
     final dateFormatter = DateFormat('dd MMM yyyy, HH:mm', 'id_ID');
     final currencyFormatter = NumberFormat.currency(
       locale: 'id_ID',
       symbol: 'Rp ',
       decimalDigits: 0,
     );
-    final produk = order.produk; // Ambil data produk
+    final produk = order.produk;
 
-    // Data unik untuk QR Code (contoh: ID Pesanan)
-    // Pastikan ID unik dan bisa diverifikasi oleh sistem Anda
+    // QR Code
     final qrData = 'ORDER_ID:${order.id}';
+
+    // Hitung jumlah hari sewa
+    int jumlahHari = 1;
+    if (order.tanggalKembali != null) {
+      jumlahHari = order.tanggalKembali!.difference(order.createdAt).inDays;
+      if (jumlahHari < 1) jumlahHari = 1;
+    }
+
+    // Total harga berdasarkan jumlah hari
+    double hargaPerHari = produk?.harga ?? order.totalHarga;
+    double totalHargaSewa = hargaPerHari * jumlahHari;
 
     return Scaffold(
       appBar: AppBar(title: Text('Detail Pesanan #${order.id}')),
@@ -30,7 +39,7 @@ class OrderDetailPage extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // --- Bagian QR Code ---
+            // QR Code
             Center(
               child: Column(
                 children: [
@@ -40,9 +49,9 @@ class OrderDetailPage extends StatelessWidget {
                   ),
                   const SizedBox(height: 15),
                   Container(
-                    padding: const EdgeInsets.all(10), // Padding di sekitar QR
+                    padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: Colors.white, // Latar belakang putih untuk QR
+                      color: Colors.white,
                       borderRadius: BorderRadius.circular(8),
                       boxShadow: [
                         BoxShadow(
@@ -53,15 +62,15 @@ class OrderDetailPage extends StatelessWidget {
                       ],
                     ),
                     child: QrImageView(
-                      data: qrData, // Data yang di-encode
+                      data: qrData,
                       version: QrVersions.auto,
-                      size: 200.0, // Ukuran QR Code
-                      gapless: false, // Beri sedikit margin
+                      size: 200.0,
+                      gapless: false,
                     ),
                   ),
                   const SizedBox(height: 10),
                   Text(
-                    qrData, // Tampilkan data QR di bawahnya
+                    qrData,
                     style: TextStyle(fontSize: 12, color: Colors.grey[500]),
                   ),
                 ],
@@ -69,8 +78,8 @@ class OrderDetailPage extends StatelessWidget {
             ),
             const Divider(height: 40),
 
-            // --- Bagian Detail Produk ---
-            if (produk != null) // Tampilkan jika data produk ada
+            // Detail Produk
+            if (produk != null)
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 leading: ClipRRect(
@@ -99,28 +108,45 @@ class OrderDetailPage extends StatelessWidget {
               )
             else
               const ListTile(
-                // Fallback jika produk tidak ditemukan
                 contentPadding: EdgeInsets.zero,
                 leading: Icon(Icons.error_outline, size: 40),
                 title: Text('Detail Produk Tidak Tersedia'),
               ),
             const Divider(height: 30),
 
-            // --- Bagian Detail Pesanan Lainnya ---
+            // Detail Pesanan
             _buildDetailRow(
               Icons.calendar_today_outlined,
               'Tanggal Pesan:',
               dateFormatter.format(order.createdAt),
             ),
+            if (order.tanggalKembali != null)
+              _buildDetailRow(
+                Icons.calendar_today_outlined,
+                'Tanggal Kembali:',
+                dateFormatter.format(order.tanggalKembali!),
+              ),
+            _buildDetailRow(
+              Icons.calendar_month,
+              'Lama Sewa:',
+              '$jumlahHari hari',
+            ),
+            // Harga per hari
+            _buildDetailRow(
+              Icons.attach_money,
+              'Harga per Hari:',
+              currencyFormatter.format(hargaPerHari),
+            ),
+            // Total harga sewa
+            _buildDetailRow(
+              Icons.payment,
+              'Total Harga Sewa:',
+              currencyFormatter.format(totalHargaSewa),
+            ),
             _buildDetailRow(
               Icons.local_shipping_outlined,
               'Status:',
               order.status.toUpperCase(),
-            ),
-            _buildDetailRow(
-              Icons.payment_outlined,
-              'Total Harga:',
-              currencyFormatter.format(order.totalHarga),
             ),
             if (order.lokasiSewa != null && order.lokasiSewa!.isNotEmpty)
               _buildDetailRow(
@@ -128,16 +154,13 @@ class OrderDetailPage extends StatelessWidget {
                 'Lokasi Ambil:',
                 order.lokasiSewa!,
               ),
-
-            // Anda bisa tambahkan detail lain jika perlu (misal: ID User)
-            // _buildDetailRow(Icons.person_outline, 'User ID:', order.userId.toString()),
           ],
         ),
       ),
     );
   }
 
-  // Helper widget untuk membuat baris detail
+  // Helper untuk baris detail
   Widget _buildDetailRow(IconData icon, String label, String value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),

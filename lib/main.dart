@@ -4,6 +4,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:tugas/data/supabase_credentials.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
+// ✅ 1. TAMBAHKAN IMPORT INI
+import 'package:flutter_localizations/flutter_localizations.dart';
+
 // 1. IMPORT TIMEZONE
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
@@ -52,6 +55,20 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Kamera Rental',
       debugShowCheckedModeBanner: false,
+
+      // ✅ 2. TAMBAHKAN BLOK INI UNTUK MEMPERBAIKI ERROR DATEPICKER
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const [
+        Locale('id', 'ID'), // Bahasa Indonesia
+        Locale('en', 'US'), // Bahasa Inggris (sebagai fallback)
+      ],
+      locale: const Locale('id', 'ID'),
+
+      // -----------------------------------------------------
       theme: ThemeData.dark().copyWith(
         colorScheme: ColorScheme.fromSeed(
           seedColor: Colors.teal,

@@ -14,9 +14,10 @@ class PesananController {
     required double totalHarga,
     required String lokasiSewa,
     int? produkStokSaatIni, // Tambahkan stok saat ini jika ingin update
+    required DateTime tanggalKembali, // ✅ PASTIKAN PARAMETER INI ADA
   }) async {
     print(
-      'PesananController: Creating order for user $userId, produk $produkId, price $totalHarga, location $lokasiSewa',
+      'PesananController: Creating order for user $userId, produk $produkId, price $totalHarga, location $lokasiSewa, kembali $tanggalKembali',
     );
     try {
       // Validasi Stok (jika ada)
@@ -32,6 +33,8 @@ class PesananController {
         'total_harga': totalHarga,
         'lokasi_sewa': lokasiSewa,
         'status': 'disewa', // Pastikan nama kolom dan nilai sesuai
+        'tanggal_kembali': tanggalKembali
+            .toIso8601String(), // ✅ TAMBAHKAN DATA TANGGAL
       };
       print('PesananController: Data to insert: $orderData');
 

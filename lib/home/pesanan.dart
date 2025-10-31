@@ -52,6 +52,10 @@ class _OrderPageState extends State<OrderPage> {
   bool _isSubmitting = false;
   final PesananController _pesananController = PesananController();
 
+  // ✅ NEW: Variabel untuk tanggal kembali
+  DateTime? _tanggalKembali;
+  final TextEditingController _tanggalController = TextEditingController();
+
   @override
   void initState() {
     super.initState();
@@ -73,7 +77,35 @@ class _OrderPageState extends State<OrderPage> {
     });
   }
 
-  /// ✅ NEW: Mendapatkan nama alamat dari koordinat (reverse geocoding)
+  /// ✅ NEW: Fungsi untuk menampilkan pemilih tanggal
+  Future<void> _pilihTanggal(BuildContext context) async {
+    // Tentukan tanggal awal (besok) dan tanggal akhir (1 tahun dari sekarang)
+    final DateTime initial =
+        _tanggalKembali ?? DateTime.now().add(const Duration(days: 1));
+    final DateTime first = DateTime.now().add(const Duration(days: 1));
+    final DateTime last = DateTime.now().add(const Duration(days: 365));
+
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: initial,
+      firstDate: first,
+      lastDate: last,
+      locale: const Locale('id', 'ID'), // Menggunakan locale Indonesia
+    );
+
+    if (picked != null && picked != _tanggalKembali) {
+      setState(() {
+        _tanggalKembali = picked;
+        // Format tanggal agar mudah dibaca di TextField
+        _tanggalController.text = DateFormat(
+          'EEEE, dd MMMM yyyy',
+          'id_ID',
+        ).format(picked);
+      });
+    }
+  }
+
+  /// ✅ (Fungsi lama) Mendapatkan nama alamat dari koordinat (reverse geocoding)
   Future<void> _getAddressFromLatLng(double lat, double lon) async {
     final url =
         'https://nominatim.openstreetmap.org/reverse?lat=$lat&lon=$lon&format=json';
@@ -175,10 +207,17 @@ class _OrderPageState extends State<OrderPage> {
   Future<void> _submitOrder() async {
     setState(() => _isSubmitting = true);
     try {
-      if (widget.currentUserId == null)
+      if (widget.currentUserId == null) {
         throw Exception('User ID tidak ditemukan.');
-      if (widget.produk.stok != null && widget.produk.stok! <= 0)
+      }
+      if (widget.produk.stok != null && widget.produk.stok! <= 0) {
         throw Exception('Stok produk habis!');
+      }
+
+      // ✅ NEW: Validasi tanggal kembali
+      if (_tanggalKembali == null) {
+        throw Exception('Silakan pilih tanggal pengembalian.');
+      }
 
       final result = await _pesananController.createOrder(
         userId: widget.currentUserId!,
@@ -186,6 +225,7 @@ class _OrderPageState extends State<OrderPage> {
         totalHarga: widget.produk.harga,
         lokasiSewa: _currentLocationText,
         produkStokSaatIni: widget.produk.stok,
+        tanggalKembali: _tanggalKembali!, // ✅ NEW: Kirim data tanggal
       );
 
       if (result['success'] == true) {
@@ -202,13 +242,14 @@ class _OrderPageState extends State<OrderPage> {
         throw Exception(result['message']);
       }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Gagal membuat pesanan: ${e.toString()}'),
             backgroundColor: Colors.red,
           ),
         );
+      }
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
     }
@@ -364,16 +405,36 @@ class _OrderPageState extends State<OrderPage> {
             ),
 
             const SizedBox(height: 8),
-            Text(
+            const Text(
               'Alamat saat ini:',
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
             ),
             Text(
               _currentLocationText,
               style: const TextStyle(
                 fontSize: 13,
-                color: Color.fromARGB(221, 255, 255, 255),
+                // Pastikan warna teks terlihat (sebelumnya alpha-nya rendah)
+                color: Colors.white70,
               ),
+            ),
+
+            const Divider(height: 30),
+
+            // ✅ NEW: Widget Tanggal Pengembalian
+            const Text(
+              'Tanggal Pengembalian',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: _tanggalController, // Gunakan controller
+              decoration: const InputDecoration(
+                labelText: 'Pilih Tanggal Kembali',
+                border: OutlineInputBorder(),
+                suffixIcon: Icon(Icons.calendar_today),
+              ),
+              readOnly: true, // Agar keyboard tidak muncul
+              onTap: () => _pilihTanggal(context), // Panggil fungsi saat diklik
             ),
 
             const Divider(height: 30),
@@ -383,6 +444,7 @@ class _OrderPageState extends State<OrderPage> {
               'Konversi Waktu Dunia (Tampilan Saja)',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
             ),
+            // ... (Sisa kode konversi waktu tetap sama) ...
             const SizedBox(height: 10),
             DropdownButtonFormField<String>(
               decoration: const InputDecoration(
@@ -438,9 +500,14 @@ class _OrderPageState extends State<OrderPage> {
             ElevatedButton.icon(
               onPressed: _isSubmitting ? null : _submitOrder,
               icon: _isSubmitting
-                  ? const CircularProgressIndicator(
-                      color: Colors.white,
-                      strokeWidth: 2,
+                  ? const SizedBox(
+                      // Ukuran CircularProgressIndicator
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
                     )
                   : const Icon(Icons.check_circle_outline),
               label: Text(

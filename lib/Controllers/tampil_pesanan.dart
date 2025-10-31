@@ -13,6 +13,7 @@ class PesananController {
     required double totalHarga,
     required String lokasiSewa,
     int? produkStokSaatIni,
+    DateTime? tanggalKembali,
   }) async {
     print(
       // <-- LOG 1: Memulai fungsi
@@ -33,7 +34,10 @@ class PesananController {
         'produk_id': produkId,
         'total_harga': totalHarga,
         'lokasi_sewa': lokasiSewa,
-        'status': 'disewa', // Pastikan nama kolom dan nilai sesuai
+        'status': 'disewa',
+        if (tanggalKembali != null)
+          'tanggal_kembali': tanggalKembali
+              .toIso8601String(), // Pastikan nama kolom dan nilai sesuai
       };
       print(
         'PesananController: Data to insert: $orderData',
