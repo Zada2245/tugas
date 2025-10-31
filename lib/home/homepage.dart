@@ -6,7 +6,15 @@ import 'package:tugas/model/produk_model.dart';
 import 'package:tugas/model/user_model.dart'; // Import UserModel
 import 'package:tugas/home/detail_page.dart';
 import 'package:tugas/home/riwayat_pesanan.dart';
+import 'package:tugas/home/comment_page.dart';
+import 'package:tugas/home/profile_page.dart';
 import 'package:intl/intl.dart';
+
+// --- PERUBAHAN: IMPORT FILE BARU ---
+import 'package:tugas/home/saran_kesan_page.dart';
+// ------------------------------------
+
+// --- KELAS SaranKesanPage SUDAH DIHAPUS DARI SINI ---
 
 class HomePage extends StatefulWidget {
   final UserModel currentUser;
@@ -17,11 +25,19 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  // --- STATE BARU UNTUK SEARCH ---
+  // State untuk Bottom Navigation Bar
+  int _selectedIndex = 0; // Index 0 adalah tab "Home"
+
+  void _onItemTapped(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
+  }
+
+  // (State dan logic untuk tab Home)
   final TextEditingController _searchController = TextEditingController();
   List<ProdukModel> _allProduk = [];
   List<ProdukModel> _filteredProduk = [];
-  // ---------------------------------
 
   final ProdukController _produkController = ProdukController();
   bool _isLoading = true;
@@ -35,7 +51,6 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     _ambilDataProduk();
-    // Tambahkan listener untuk search bar
     _searchController.addListener(_filterProduk);
   }
 
@@ -46,15 +61,14 @@ class _HomePageState extends State<HomePage> {
     super.dispose();
   }
 
-  // Fungsi untuk filter produk berdasarkan input search
   void _filterProduk() {
+    // ... (Fungsi ini tidak berubah)
     final query = _searchController.text.toLowerCase();
     setState(() {
       if (query.isEmpty) {
-        _filteredProduk = _allProduk; // Tampilkan semua jika search kosong
+        _filteredProduk = _allProduk;
       } else {
         _filteredProduk = _allProduk.where((produk) {
-          // Cari berdasarkan nama atau deskripsi
           final namaLower = produk.nama.toLowerCase();
           final deskripsiLower = produk.deskripsi.toLowerCase();
           return namaLower.contains(query) || deskripsiLower.contains(query);
@@ -64,14 +78,15 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _ambilDataProduk() async {
+    // ... (Fungsi ini tidak berubah)
     setState(() {
       _isLoading = true;
     });
     try {
       final List<ProdukModel> data = await _produkController.getProduk();
       setState(() {
-        _allProduk = data; // Simpan di list master
-        _filteredProduk = data; // Tampilkan semua di awal
+        _allProduk = data;
+        _filteredProduk = data;
         _isLoading = false;
       });
     } catch (error) {
@@ -90,137 +105,209 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Rental Kamera'),
-        automaticallyImplyLeading: false,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.history),
-            tooltip: 'Riwayat Pesanan',
-            onPressed: () {
-              if (widget.currentUser.id != null) {
+  // --- AppBar Dinamis ---
+  PreferredSizeWidget _buildAppBar() {
+    // Tampilkan AppBar yang berbeda untuk setiap tab
+    switch (_selectedIndex) {
+      case 0: // Tab Home
+        return AppBar(
+          title: const Text('Rental Kamera'),
+          automaticallyImplyLeading: false,
+          actions: [
+            // --- Tombol Komentar (Tetap) ---
+            IconButton(
+              icon: const Icon(Icons.comment_outlined),
+              tooltip: 'Komentar Lokal',
+              onPressed: () {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => RiwayatPesananPage(
-                      currentUserId: widget.currentUser.id,
+                    builder: (context) => CommentPage(
+                      currentUsername: widget.currentUser.username,
                     ),
                   ),
                 );
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('User ID tidak ditemukan! Coba login ulang.'),
-                    backgroundColor: Colors.orange,
-                  ),
+              },
+            ),
+
+            // --- Tombol Logout (Tetap) ---
+            IconButton(
+              icon: const Icon(Icons.logout),
+              tooltip: 'Logout',
+              onPressed: () async {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (context) => const LoginPage()),
                 );
-              }
-            },
+              },
+            ),
+          ],
+        );
+      case 1: // Tab Riwayat
+        return AppBar(
+          title: const Text('Riwayat Pesanan'),
+          automaticallyImplyLeading: false,
+        );
+      case 2: // Tab Saran & Kesan
+        return AppBar(
+          title: const Text('Saran & Kesan'),
+          automaticallyImplyLeading: false,
+        );
+      case 3: // Tab Profil
+        return AppBar(
+          title: const Text('Profil Saya'),
+          automaticallyImplyLeading: false,
+        );
+      default:
+        return AppBar(title: const Text('Rental Kamera'));
+    }
+  }
+
+  // --- Widget untuk body Tab Home ---
+  Widget _buildHomeTab() {
+    return _isLoading
+        ? const Center(child: CircularProgressIndicator())
+        : RefreshIndicator(
+            onRefresh: _ambilDataProduk,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Text(
+                    'Selamat Datang, ${widget.currentUser.username}!',
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                // --- SEARCH BAR ---
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16.0,
+                    vertical: 8.0,
+                  ),
+                  child: TextField(
+                    controller: _searchController,
+                    decoration: InputDecoration(
+                      hintText: 'Cari kamera, lensa, dll...',
+                      prefixIcon: const Icon(Icons.search),
+                      suffixIcon: _searchController.text.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear),
+                              onPressed: () {
+                                _searchController.clear();
+                                FocusScope.of(
+                                  context,
+                                ).unfocus(); // Tutup keyboard
+                              },
+                            )
+                          : null,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12.0),
+                        borderSide: BorderSide.none, // Tanpa border
+                      ),
+                      filled: true,
+                      fillColor: Theme.of(context).cardColor, // Warna card
+                    ),
+                  ),
+                ),
+                // --- GRIDVIEW ---
+                Expanded(
+                  child: _filteredProduk.isEmpty
+                      ? Center(
+                          child: Text(
+                            _allProduk.isEmpty
+                                ? 'Tidak ada produk tersedia.'
+                                : 'Produk tidak ditemukan untuk "${_searchController.text}"',
+                            style: TextStyle(color: Colors.grey[400]),
+                          ),
+                        )
+                      : GridView.builder(
+                          padding: const EdgeInsets.all(12.0),
+                          gridDelegate:
+                              const SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 2,
+                                crossAxisSpacing: 12.0,
+                                mainAxisSpacing: 12.0,
+                                childAspectRatio: 0.7,
+                              ),
+                          itemCount: _filteredProduk.length,
+                          itemBuilder: (context, index) {
+                            final ProdukModel produk = _filteredProduk[index];
+                            return _buildProdukCard(produk);
+                          },
+                        ),
+                ),
+              ],
+            ),
+          );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // --- Definisikan semua halaman/tab ---
+    final List<Widget> _pages = <Widget>[
+      // Tab 0: Home
+      _buildHomeTab(), // Menggunakan method yang tadi dibuat
+      // Tab 1: Riwayat
+      RiwayatPesananPage(currentUserId: widget.currentUser.id),
+
+      // Tab 2: Saran & Kesan (Menggunakan file yang di-import)
+      SaranKesanPage(currentUser: widget.currentUser),
+
+      // Tab 3: Profil
+      ProfilePage(currentUser: widget.currentUser),
+    ];
+
+    // --- Scaffold utama ---
+    return Scaffold(
+      appBar: _buildAppBar(), // AppBar dinamis
+      // Body sekarang menampilkan halaman berdasarkan index yang dipilih
+      body: IndexedStack(index: _selectedIndex, children: _pages),
+
+      // --- BottomNavigationBar ---
+      bottomNavigationBar: BottomNavigationBar(
+        items: const <BottomNavigationBarItem>[
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home_outlined),
+            activeIcon: Icon(Icons.home), // Icon saat aktif
+            label: 'Home',
           ),
-          IconButton(
-            icon: const Icon(Icons.logout),
-            tooltip: 'Logout',
-            onPressed: () async {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => const LoginPage()),
-              );
-            },
+          BottomNavigationBarItem(
+            icon: Icon(Icons.history_outlined),
+            activeIcon: Icon(Icons.history),
+            label: 'Riwayat',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.rate_review_outlined),
+            activeIcon: Icon(Icons.rate_review),
+            label: 'Saran', // Label untuk menu baru
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person_outline),
+            activeIcon: Icon(Icons.person),
+            label: 'Profil',
           ),
         ],
+        currentIndex: _selectedIndex,
+        onTap: _onItemTapped,
+
+        type: BottomNavigationBarType.fixed,
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
-              onRefresh: _ambilDataProduk,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Text(
-                      'Selamat Datang, ${widget.currentUser.username}!',
-                      style: const TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  // --- SEARCH BAR BARU ---
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16.0,
-                      vertical: 8.0,
-                    ),
-                    child: TextField(
-                      controller: _searchController,
-                      decoration: InputDecoration(
-                        labelText: 'Cari produk...',
-                        prefixIcon: const Icon(Icons.search),
-                        suffixIcon: _searchController.text.isNotEmpty
-                            ? IconButton(
-                                icon: const Icon(Icons.clear),
-                                onPressed: () {
-                                  _searchController.clear();
-                                },
-                              )
-                            : null,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12.0),
-                        ),
-                        filled: true,
-                        fillColor: Colors.black.withOpacity(0.1),
-                      ),
-                    ),
-                  ),
-                  // --- GRIDVIEW BARU ---
-                  Expanded(
-                    child: _filteredProduk.isEmpty
-                        ? Center(
-                            child: Text(
-                              _allProduk.isEmpty
-                                  ? 'Tidak ada produk tersedia.'
-                                  : 'Produk tidak ditemukan.',
-                              style: TextStyle(color: Colors.grey[400]),
-                            ),
-                          )
-                        : GridView.builder(
-                            padding: const EdgeInsets.all(12.0),
-                            // Konfigurasi Grid 2 Kolom
-                            gridDelegate:
-                                const SliverGridDelegateWithFixedCrossAxisCount(
-                                  crossAxisCount: 2, // 2 kolom
-                                  crossAxisSpacing: 12.0, // Jarak horizontal
-                                  mainAxisSpacing: 12.0, // Jarak vertikal
-                                  childAspectRatio: 0.75, // Rasio P:L card
-                                ),
-                            itemCount: _filteredProduk.length,
-                            itemBuilder: (context, index) {
-                              final ProdukModel produk = _filteredProduk[index];
-                              // Panggil card baru
-                              return _buildProdukCard(produk);
-                            },
-                          ),
-                  ),
-                ],
-              ),
-            ),
     );
   }
 
-  // --- WIDGET CARD BARU UNTUK GRID ---
+  // --- WIDGET CARD (Tidak berubah) ---
   Widget _buildProdukCard(ProdukModel produk) {
     return Card(
       elevation: 3,
-      clipBehavior: Clip.antiAlias, // Penting untuk rounded corner di gambar
+      clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
       child: InkWell(
         onTap: () {
           print('Tapped on: ${produk.nama}');
-          // Hilangkan fokus search bar saat pindah halaman
           FocusScope.of(context).unfocus();
           Navigator.push(
             context,
@@ -235,13 +322,13 @@ class _HomePageState extends State<HomePage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Gambar Produk dengan Animasi Hero
+            // Gambar Produk
             Hero(
-              tag: 'produk_${produk.id}', // Tag unik untuk animasi
+              tag: 'produk_${produk.id}',
               child: Image.network(
                 produk.gambar,
-                height: 150, // Tinggi gambar
-                width: double.infinity, // Lebar penuh card
+                height: 150,
+                width: double.infinity,
                 fit: BoxFit.cover,
                 errorBuilder: (context, error, stackTrace) {
                   return Container(
@@ -254,7 +341,7 @@ class _HomePageState extends State<HomePage> {
                 },
               ),
             ),
-            // Detail Teks di bawah gambar
+            // Detail Teks
             Padding(
               padding: const EdgeInsets.all(12.0),
               child: Column(
@@ -266,7 +353,7 @@ class _HomePageState extends State<HomePage> {
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
                     ),
-                    maxLines: 1,
+                    maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 4),

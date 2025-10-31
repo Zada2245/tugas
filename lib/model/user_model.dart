@@ -3,8 +3,8 @@ class UserModel {
   final String username;
   final String email;
   final String? fullName;
-  final String? phoneNumber;
-  final String passwordHash; // Nama field tetap passwordHash
+  final String? phoneNumber; // Nama variabel di Flutter tetap 'phoneNumber'
+  final String passwordHash;
   final DateTime? updatedAt;
 
   UserModel({
@@ -17,32 +17,36 @@ class UserModel {
     this.updatedAt,
   });
 
+  // Fungsi ini mengubah data JSON/Map dari Supabase menjadi objek UserModel
   factory UserModel.fromJson(Map<String, dynamic> json) {
     return UserModel(
       id: json['id'] as int?,
       username: json['username'] as String? ?? '',
       email: json['email'] as String? ?? '',
       fullName: json['full_name'] as String?,
+
+      // --- PERBAIKAN DI SINI ---
+      // Nama kolom di database Anda adalah 'phone_number'
       phoneNumber:
-          json['phone_numb'] as String?, // Sesuaikan jika nama kolom DB beda
-      // PERBAIKAN FINAL DI SINI: Gunakan key 'password_hash'
-      passwordHash: json['password_hash'] as String? ?? '', // <-- Harus '_hash'
+          json['phone_number'] as String?, // <-- Diubah ke 'phone_number'
+
+      // -------------------------
+      passwordHash: json['password_hash'] as String? ?? '',
       updatedAt: json['updated_at'] == null
           ? null
           : DateTime.tryParse(json['updated_at'].toString()),
     );
   }
 
+  // toJson (jika Anda perlu mengirim data ke Supabase nanti)
   Map<String, dynamic> toJson() {
     return {
       'id': id,
       'username': username,
       'email': email,
       'full_name': fullName,
-      // Sesuaikan 'phone_numb' jika nama kolom DB beda
-      'phone_number': phoneNumber,
-      // Nama key di sini harus cocok dengan kolom DB
-      'password_hash': passwordHash, // <-- Pastikan ini juga benar
+      'phone_number': phoneNumber, // <-- Diubah ke 'phone_number'
+      'password_hash': passwordHash,
       'updated_at': updatedAt?.toIso8601String(),
     };
   }
