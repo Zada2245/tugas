@@ -263,16 +263,14 @@ class _HomePageState extends State<HomePage> {
 
     // --- Scaffold utama ---
     return Scaffold(
-      appBar: _buildAppBar(), // AppBar dinamis
-      // Body sekarang menampilkan halaman berdasarkan index yang dipilih
+      appBar: _buildAppBar(),
       body: IndexedStack(index: _selectedIndex, children: _pages),
 
-      // --- BottomNavigationBar ---
       bottomNavigationBar: BottomNavigationBar(
         items: const <BottomNavigationBarItem>[
           BottomNavigationBarItem(
             icon: Icon(Icons.home_outlined),
-            activeIcon: Icon(Icons.home), // Icon saat aktif
+            activeIcon: Icon(Icons.home),
             label: 'Home',
           ),
           BottomNavigationBarItem(
@@ -283,7 +281,7 @@ class _HomePageState extends State<HomePage> {
           BottomNavigationBarItem(
             icon: Icon(Icons.rate_review_outlined),
             activeIcon: Icon(Icons.rate_review),
-            label: 'Saran', // Label untuk menu baru
+            label: 'Saran',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.person_outline),
@@ -299,7 +297,6 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // --- WIDGET CARD (Tidak berubah) ---
   Widget _buildProdukCard(ProdukModel produk) {
     return Card(
       elevation: 3,
@@ -322,7 +319,6 @@ class _HomePageState extends State<HomePage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Gambar Produk
             Hero(
               tag: 'produk_${produk.id}',
               child: Image.network(
@@ -341,7 +337,7 @@ class _HomePageState extends State<HomePage> {
                 },
               ),
             ),
-            // Detail Teks
+
             Padding(
               padding: const EdgeInsets.all(12.0),
               child: Column(

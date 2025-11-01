@@ -125,7 +125,4 @@ class PesananController {
       return []; // Kembalikan list kosong jika error
     }
   }
-  // -----------------------------
-
-  // Tambahkan fungsi lain jika perlu (misal: cancelOrder, updateOrderStatus)
 }

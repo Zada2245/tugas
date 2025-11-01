@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'package:tugas/data/supabase_credentials.dart';
-import 'package:tugas/model/user_model.dart'; // Pastikan path ke model benar
+import 'package:tugas/model/user_model.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class UserController {
@@ -17,9 +17,7 @@ class UserController {
     print('Attempting login for email: $email');
     try {
       print('Calling Supabase signInWithPassword...');
-      // NOTE: signInWithPassword di controller manual ini hanya untuk contoh,
-      // Seharusnya kita cek hash manual. Tapi kita ikuti dulu alur sebelumnya.
-      // Jika ingin cek manual:
+
       final profileRes = await _client
           .from('profile')
           .select()
@@ -48,7 +46,6 @@ class UserController {
         return null;
       }
     } on AuthException catch (authErr) {
-      // Ini seharusnya tidak terpanggil jika kita cek hash manual
       print(
         'Login Auth error caught (unexpected in manual mode): ${authErr.message}',
       );
@@ -91,14 +88,13 @@ class UserController {
 
       final passwordHash = _hashPassword(password);
 
-      // PASTIKAN NAMA KOLOM DI SINI SESUAI DATABASE ANDA
       await _client.from('profile').insert({
         'username': username,
         'email': email,
         'full_name': fullName,
         // PERBAIKAN DI SINI:
-        'phone_number': phoneNumber, // <-- Gunakan phone_number
-        'password_hash': passwordHash, // <-- Gunakan password_hash
+        'phone_number': phoneNumber,
+        'password_hash': passwordHash,
       });
 
       return {'success': true, 'message': 'Registrasi berhasil'};
